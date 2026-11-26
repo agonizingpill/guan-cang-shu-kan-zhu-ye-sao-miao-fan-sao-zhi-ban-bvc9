@@ -11,6 +11,7 @@
 - 扫描台值班窗 `scan_benches`，字段为 `title`（扫描台标识）、`feed`（适用进页方式）、`opening`（开始分钟）、`closing`（结束分钟）、`one_page`（每页占用分钟）、`ready`（准入启用）。模型约束位于 `backend/domain/scan_benches_model.py`，规则位于 `scan_benches_service.py`。
 - 页段返扫值班单 `rescan_slots`，字段为 `check_ref`（页序清点号）、`bench`（占用扫描台）、`day`（值班日期）、`begin_at`（开始分钟）、`finish_at`（结束分钟）、`pages`（逐页待返扫表）、`estimate`（预算坏页数）、`state`（值班状态）、`token`（预测凭证）。模型约束位于 `backend/domain/rescan_slots_model.py`，规则位于 `rescan_slots_service.py`。
 - 逐页返扫交割 `page_receipts`，字段为 `slot`（已预约值班单）、`mapped_pages`（原页号与新图编号）、`checked_by`（复核员）、`receipt_hash`（逐页凭证 SHA-256）。模型约束位于 `backend/domain/page_receipts_model.py`，规则位于 `page_receipts_service.py`。
+- 闭卷前抽查 `audit_shifts` / `page_audits` / `rechecks`：班次固定翻页名额、按册保底一页后依坏页模型页风险派页、复核员原子领页并报送好坏；漏记坏页会追加到 `folio_checks.faults` 并把该段置为待重查。闭卷就绪规则位于 `backend/domain/page_audits_service.py`。
 
 ### 一天的业务操作
 
@@ -51,6 +52,7 @@ Compose 运行 Nginx、Python FastAPI、独立 Redis 消费进程、MySQL 8 和 
 | 扫描台值班窗 | `/scan_benches` /scan_benches/set-access | `frontend/src/pages/scan_benches.js` |
 | 页段返扫值班单 | `/rescan_slots` /rescan_slots/estimate-count，/rescan_slots/book-slot | `frontend/src/pages/rescan_slots.js` |
 | 逐页返扫交割 | `/page_receipts` /page_receipts/accept-pages | `frontend/src/pages/page_receipts.js` |
+| 闭卷抽查与闭卷 | `/page_audits`，/page_audits/plan-shift、/claim-page、/report-page，/folio_checks/recheck，/volumes/close-volume | `frontend/src/pages/spot_checks.js` |
 
 SQL 实体与约束在 `backend/domain` 下维护。前端使用原生 ES modules。核心算子为 PoissonRegressor。训练目标为逐段坏页数除以该段曝光页数，拟合时以曝光页数作样本权重；返回期望坏页数、六段末段留出偏差与输入哈希。
 

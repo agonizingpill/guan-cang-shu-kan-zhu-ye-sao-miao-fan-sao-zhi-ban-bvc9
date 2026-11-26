@@ -68,6 +68,24 @@
         "reviewer"
       ],
       "success": "已写入"
+    },
+    {
+      "name": "close_volume",
+      "label": "核验抽查与修复后闭卷",
+      "path": "/volumes/close-volume",
+      "fields": [
+        {
+          "name": "code",
+          "label": "馆藏册号",
+          "kind": "text",
+          "initial": "MS-010"
+        }
+      ],
+      "help": "须整册清点齐、抽查页报完、退回页段重查通过且所有坏页完成返扫交割。",
+      "roles": [
+        "reviewer"
+      ],
+      "success": "已闭卷"
     }
   ]
 };

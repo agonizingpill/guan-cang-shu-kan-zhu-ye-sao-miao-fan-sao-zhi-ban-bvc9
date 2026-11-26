@@ -39,7 +39,18 @@ def record_check(conn, data):
     clash = select(folio_checks.c.code).where(folio_checks.c.volume==book['code'],
         folio_checks.c.first<=data.last, folio_checks.c.last>=data.first).limit(1)
     need(conn.execute(clash).scalar() is None, '同册页段重叠，沿用原清点单')
-    return insert(conn, folio_checks, **(data.model_dump() | {'faults':sorted(data.faults,key=lambda item:item['page'])}))
+    values = {
+        'code': data.code,
+        'volume': data.volume,
+        'first': data.first,
+        'last': data.last,
+        'feed': data.feed,
+        'gutter': data.gutter,
+        'faults': sorted(data.faults, key=lambda item: item['page']),
+        'status': 'checked',
+        'state': '已核对',
+    }
+    return insert(conn, folio_checks, **values)
 
 
 def change_access(conn, data):
@@ -77,10 +88,29 @@ def reserve(conn, data, task):
     need(bench['ready'] and bench['feed']==check['feed'], '扫描台须启用且允许该进页方式')
     need(bench['opening']<=data.begin_at<data.finish_at<=bench['closing'], '选定的台时必须在当班开放窗口内')
     model = task['result']
-    pages = [item['page'] for item in check['faults']]
-    need(data.finish_at-data.begin_at>=bench['one_page']*max(len(pages),model['planned_pages']), '台时不足以返扫')
-    exists = select(rescan_slots.c.code).where(rescan_slots.c.check_ref==check['code']).with_for_update()
-    need(conn.execute(exists).scalar() is None, '该页段已有返扫预约')
+    all_pages = [item['page'] for item in check['faults']]
+    existing_slots = conn.execute(select(rescan_slots).where(
+        rescan_slots.c.check_ref==check['code']).with_for_update()).mappings().all()
+    if existing_slots and any(slot['state']=='已预约' for slot in existing_slots):
+        need(False, '该页段已有返扫预约')
+
+    already_scheduled = {
+        int(page)
+        for slot in existing_slots
+        for page in (slot['pages'] or [])
+        if type(page) is int
+    }
+    if existing_slots:
+        # A spot check can add a missed bad page after the first delivery.
+        # Allow a supplemental slot for only those newly discovered pages.
+        pages = [page for page in all_pages if page not in already_scheduled]
+        need(pages, '该页段已有返扫预约')
+        required_pages = len(pages)
+    else:
+        pages = all_pages
+        required_pages = max(len(pages), model['planned_pages'])
+
+    need(data.finish_at-data.begin_at>=bench['one_page']*required_pages, '台时不足以返扫')
     clashes = select(rescan_slots.c.code).where(
         rescan_slots.c.bench==bench['code'], rescan_slots.c.day==data.day,
         rescan_slots.c.begin_at<data.finish_at, rescan_slots.c.finish_at>data.begin_at).limit(1).with_for_update()

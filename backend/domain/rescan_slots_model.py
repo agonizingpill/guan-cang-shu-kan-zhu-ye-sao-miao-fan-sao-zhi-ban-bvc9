@@ -5,7 +5,7 @@ from core.db import metadata
 
 rescan_slots = Table('rescan_slots', metadata,
     Column('code', String(64), primary_key=True),
-    Column('check_ref', String(64), ForeignKey('folio_checks.code'), nullable=False, unique=True),
+    Column('check_ref', String(64), ForeignKey('folio_checks.code'), nullable=False, index=True),
     Column('bench', String(64), ForeignKey('scan_benches.code'), nullable=False),
     Column('day', String(64), nullable=False),
     Column('begin_at', Integer, nullable=False),

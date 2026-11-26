@@ -10,7 +10,10 @@ function render() {
     return;
   }
   const slug = location.hash.slice(1);
-  const current = pages.find(page => page.key === slug) || pages[0];
+  const aliases = {page_audits: 'spot_checks', audit_pages: 'spot_checks'};
+  const current = pages.find(page => page.key === slug)
+    || pages.find(page => page.key === aliases[slug])
+    || pages[0];
   const workspace = el('main',{id:'workspace'});
   root.replaceChildren(el('header',{class:'top'},el('div',{class:'brand'},info.title),
     el('span',{},ROLES[session().role]),el('button',{class:'quiet',onclick:() => {

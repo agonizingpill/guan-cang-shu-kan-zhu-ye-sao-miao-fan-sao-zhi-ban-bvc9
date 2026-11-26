@@ -11,4 +11,7 @@ from domain.page_receipts_model import page_receipts
 
 def mark_faults(conn, user, data):
     from domain.page_operations import record_check
-    return record_check(conn,data)
+    from domain.page_audits_service import auto_replan_after_check
+    check = record_check(conn, data)
+    auto_replan_after_check(conn, data)
+    return check
